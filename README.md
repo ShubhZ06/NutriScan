@@ -1,50 +1,53 @@
-# 🥗 NutriScan - AI Powered Nutrition Scanner App
+# 🥗 NutriScan - AI-Powered Nutrition Scanner App
 
-**NutriScan** is a modern, AI-enhanced nutrition scanning app built with **Flutter**. It allows users to scan food barcodes, retrieve accurate nutritional data, highlight harmful ingredients, and receive personalized AI health insights. Designed with an elegant iOS-style interface, NutriScan aims to promote smarter, health-conscious choices with a premium user experience.
+NutriScan is a sleek and intuitive Flutter app designed to help users make informed decisions about the food they consume. By simply scanning product barcodes, users receive instant access to nutritional information, potential allergens, harmful ingredients, and personalized health tips — powered by AI and Open Food Facts API.
 
-![NutriScan UI Preview](https://github.com/ShubhZ06/NutriScan/assets/your-screenshot.png)
-
----
-
-## 📱 Features
-
-- 🔍 **Barcode Scanning** — Instantly scan products using your camera.
-- 🍽️ **Nutritional Details** — View calories, macros, additives, and more from Open Food Facts API.
-- ⚠️ **Harmful Ingredient Alerts** — Highlights banned or unhealthy substances.
-- 🧠 **AI Assistant** — Get personalized dietary advice and food safety analysis.
-- 🕶️ **iOS-Style UI** — Built with glassmorphism, smooth animations, and toggleable light/dark themes.
-- 📚 **Scan History** — Stores your previous scans locally using shared preferences.
-- 🔐 **Secure & Offline Support** — Works seamlessly with cached data even without internet.
-- 🌍 **Dynamic Banned Substances List** — Pulled from remote source for real-time accuracy.
+> ⚠️ **Note**: This is a UI + partially functional prototype designed for educational and demonstrational purposes.
 
 ---
 
-## 💻 Tech Stack
+## 🌟 Features
 
-| Layer           | Technology         |
-|----------------|--------------------|
-| Frontend       | Flutter (Dart)     |
-| Design         | Glassmorphism, Cupertino, Animated UI |
-| Backend API    | Open Food Facts API + Flask (for AI) |
-| AI Features    | Ingredient analysis & recommendation |
-| Local Storage  | Shared Preferences |
-| State Mgmt     | Provider           |
+- 📷 **Barcode Scanner** – Scan packaged food items and get instant nutritional info.
+- 🧠 **AI-Powered Insights** – Understand ingredients better with AI-based suggestions and warnings.
+- 📜 **Scan History** – View previously scanned products at any time.
+- 💡 **Nutrition Tips** – Handy health and nutrition tips to guide daily decisions.
+- 🌗 **Light/Dark Mode** – Toggle between light and dark themes.
+- 🧪 **Banned Substances Alert** – Get warnings if scanned products contain any banned or harmful ingredients.
+- 🇮🇳 **Indian Consumer Friendly** – Tailored with locally relevant tips and food products.
 
 ---
 
-## 🚀 Getting Started
+## 📲 Screenshots
 
-### Prerequisites
-- Flutter SDK installed
-- Android Studio / VS Code
-- Emulator or physical device
-- Flask backend (optional, for AI features)
+| Splash | Intro 1 | Intro 2 | Intro 3 |
+|--------|---------|---------|---------|
+| ![](assets/splash_screen.jpg) | ![](assets/intro_screen_1.jpg) | ![](assets/intro_screen_2.jpg) | ![](assets/intro_screen_3.jpg) |
 
-### Run the App
-```bash
-git clone https://github.com/ShubhZ06/NutriScan.git
-cd NutriScan
-flutter pub get
-flutter run
+| Start Screen | Search Screen | Result Screen |
+|--------------|----------------|----------------|
+| ![](assets/start_screen.jpg) | ![](assets/search_screen.jpg) | ![](assets/result_screen.jpg) |
 
+| Tips Screen | History Screen |
+|-------------|----------------|
+| ![](assets/tips_screen.jpg) | ![](assets/history_screen.jpg) |
 
+---
+
+## 🧱 Tech Stack
+
+- **Frontend:** Flutter (Dart)
+- **State Management:** `Provider`
+- **Design Style:** iOS-inspired, glassmorphism aesthetic
+- **API Used:** [Open Food Facts](https://world.openfoodfacts.org/data)
+- **Local Storage:** SharedPreferences
+- **Platform:** Android (iOS-ready)
+
+---
+
+## 🔧 Installation & Setup
+
+1. **Clone the repo**
+   ```bash
+   git clone https://github.com/ShubhZ06/NutriScan.git
+   cd NutriScan
