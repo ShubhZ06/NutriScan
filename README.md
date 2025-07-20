@@ -47,3 +47,4 @@ cd NutriScan
 flutter pub get
 flutter run
 
+
