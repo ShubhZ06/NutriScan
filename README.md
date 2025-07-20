@@ -46,3 +46,4 @@ git clone https://github.com/ShubhZ06/NutriScan.git
 cd NutriScan
 flutter pub get
 flutter run
+
