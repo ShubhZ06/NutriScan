@@ -22,7 +22,8 @@ class _TipsScreenState extends State<TipsScreen> {
     "Spicy foods can boost metabolism and aid in weight loss."
   ];
 
-  String currentFunFact = "Dark chocolate contains antioxidants that are good for heart health!"; // Default Fact
+  String currentFunFact =
+      "Dark chocolate contains antioxidants that are good for heart health!"; // Default Fact
 
   @override
   void initState() {
@@ -40,9 +41,15 @@ class _TipsScreenState extends State<TipsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nutrition Tips'),
+        title: const Text('Nutrition Tips',
+            style: TextStyle(
+                color: Colors.black,
+                fontSize: 17,
+                fontWeight: FontWeight.w600)),
         centerTitle: true,
-        backgroundColor: Colors.green,
+        backgroundColor: const Color(0xFFF2F2F7),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -52,26 +59,40 @@ class _TipsScreenState extends State<TipsScreen> {
               _buildTipCard(
                 icon: Icons.local_drink,
                 title: "Calcium Needs",
-                description: "The recommended daily intake of calcium is 1000 mg for most adults.",
+                description:
+                    "The recommended daily intake of calcium is 1000 mg for most adults.",
                 foodSources: ["Milk", "Cheese", "Leafy Greens", "Almonds"],
               ),
               _buildTipCard(
                 icon: Icons.local_fire_department,
                 title: "Caloric Intake",
-                description: "The average adult needs about 2000-2500 calories per day, depending on activity level.",
+                description:
+                    "The average adult needs about 2000-2500 calories per day, depending on activity level.",
                 foodSources: ["Rice", "Bread", "Meat", "Nuts"],
               ),
               _buildTipCard(
                 icon: Icons.eco,
                 title: "Essential Nutrients",
-                description: "A balanced diet includes vitamins, minerals, protein, and healthy fats.",
-                foodSources: ["Fruits", "Vegetables", "Whole Grains", "Legumes"],
+                description:
+                    "A balanced diet includes vitamins, minerals, protein, and healthy fats.",
+                foodSources: [
+                  "Fruits",
+                  "Vegetables",
+                  "Whole Grains",
+                  "Legumes"
+                ],
               ),
               _buildTipCard(
                 icon: Icons.water_drop,
                 title: "Stay Hydrated",
-                description: "Drink at least 8 glasses of water daily to maintain good health.",
-                foodSources: ["Water", "Fruits", "Herbal Teas", "Coconut Water"],
+                description:
+                    "Drink at least 8 glasses of water daily to maintain good health.",
+                foodSources: [
+                  "Water",
+                  "Fruits",
+                  "Herbal Teas",
+                  "Coconut Water"
+                ],
               ),
               _buildTipCard(
                 icon: Icons.lightbulb,
@@ -113,13 +134,15 @@ class _TipsScreenState extends State<TipsScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(description, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+            Text(description,
+                style: const TextStyle(fontSize: 14, color: Colors.black87)),
             const SizedBox(height: 10),
             SizedBox(
               height: 40,
@@ -128,14 +151,16 @@ class _TipsScreenState extends State<TipsScreen> {
                 children: foodSources.map((food) {
                   return Container(
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.green[100],
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       food,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   );
                 }).toList(),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences
-import 'dart:convert'; // Import for JSON decoding
-import 'product_details_screen.dart'; // Import the product details screen
-import 'package:intl/intl.dart'; // Import intl for date formatting
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/firestore_service.dart';
+import 'product_details_screen.dart';
 
 class ScanHistoryScreen extends StatefulWidget {
   const ScanHistoryScreen({Key? key}) : super(key: key);
@@ -12,54 +12,45 @@ class ScanHistoryScreen extends StatefulWidget {
 }
 
 class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
-  List<Map<String, dynamic>> _history = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadScanHistory();
-  }
-
-  Future<void> _loadScanHistory() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? historyList = prefs.getStringList('scan_history');
-
-    if (historyList != null) {
-      setState(() {
-        _history = historyList.map((item) {
-          return json.decode(item) as Map<String, dynamic>;
-        }).toList();
-      });
-    }
-  }
-
-  Future<void> _clearHistory() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('scan_history');
-
-    setState(() {
-      _history.clear();
-    });
-  }
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
-        title: const Text('Scan History'),
-        backgroundColor: Colors.green,
+        title: const Text('Scan History',
+            style: TextStyle(
+                color: Colors.black,
+                fontSize: 17,
+                fontWeight: FontWeight.w600)),
+        backgroundColor: const Color(0xFFF2F2F7),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
         actions: [
-          if (_history.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () {
-                _clearHistory();
-              },
-            ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () {
+              _showClearConfirmation();
+            },
+          ),
         ],
       ),
-      body: _history.isEmpty
-          ? const Center(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestoreService.getScanHistory(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -71,48 +62,99 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                   ),
                 ],
               ),
-            )
-          : ListView.builder(
-              itemCount: _history.length,
-              itemBuilder: (context, index) {
-                final product = _history[index];
-                final productName = product['product_name'] ?? 'Unknown Product';
-                final scanTimestamp = product['scan_timestamp'] ?? DateTime.now().toString();
-                final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(scanTimestamp));
+            );
+          }
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  elevation: 3,
-                  child: ListTile(
-                    leading: product['image_url'] != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              product['image_url'],
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : const Icon(Icons.fastfood, size: 50, color: Colors.green),
-                    title: Text(
-                      productName,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text('Scanned on: $formattedDate'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 18),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProductDetailsScreen(product: product),
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              final productName = data['product_name'] ?? 'Unknown Product';
+
+              String formattedDate = 'Unknown Date';
+              if (data['scan_timestamp'] != null) {
+                final timestamp = data['scan_timestamp'] as Timestamp;
+                formattedDate =
+                    DateFormat('yyyy-MM-dd HH:mm').format(timestamp.toDate());
+              }
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                elevation: 0,
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(12),
+                  leading: data['image_url'] != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            data['image_url'],
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                                width: 60, height: 60, color: Colors.grey[200]),
+                          ),
+                        )
+                      : Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(10)),
+                          child:
+                              const Icon(Icons.fastfood, color: Colors.green),
                         ),
-                      );
-                    },
+                  title: Text(
+                    productName,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600),
                   ),
-                );
-              },
-            ),
+                  subtitle: Text('Scanned: $formattedDate',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      size: 14, color: Colors.grey),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProductDetailsScreen(product: data),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showClearConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear History'),
+        content:
+            const Text('Are you sure you want to delete all scan history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _firestoreService.clearHistory();
+            },
+            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }
