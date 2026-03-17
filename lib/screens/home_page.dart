@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:barcode_scan2/barcode_scan2.dart';
-import 'dart:convert';
 import 'dart:ui';
 import 'product_details_screen.dart';
 import 'scan_history_screen.dart';
-import 'about_us_screen.dart';
-import 'tips_screen.dart';
+import 'profile_screen.dart';
+import 'scanner_screen.dart';
+import 'ingredient_analysis_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../services/open_food_facts_service.dart';
+import '../services/ocr_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -23,28 +23,29 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
   final AuthService _authService = AuthService();
+  final OpenFoodFactsService _foodService = OpenFoodFactsService();
+  final OcrService _ocrService = OcrService();
   List<dynamic> _searchResults = [];
   bool _isLoading = false;
 
+  @override
+  void dispose() {
+    _ocrService.dispose();
+    super.dispose();
+  }
+
   Future<void> _searchProduct(String productName) async {
+    if (productName.trim().isEmpty) return;
     try {
       setState(() => _isLoading = true);
-      final response = await http.get(Uri.parse(
-          'https://world.openfoodfacts.org/cgi/search.pl?search_terms=$productName&json=true'));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          _searchResults = data['products'] ?? [];
-        });
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        List<String> searchHistory =
-            prefs.getStringList('search_history') ?? [];
-        searchHistory.add(productName);
-        await prefs.setStringList('search_history', searchHistory);
-      } else {
-        throw Exception('Failed to load products');
-      }
+      final products = await _foodService.searchProducts(productName);
+      setState(() {
+        _searchResults = products;
+      });
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      List<String> searchHistory = prefs.getStringList('search_history') ?? [];
+      searchHistory.add(productName);
+      await prefs.setStringList('search_history', searchHistory);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -55,33 +56,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _scanProduct() async {
+    // Navigate to scanner screen and get barcode
+    final String? barcode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const ScannerScreen()),
+    );
+
+    if (barcode == null || barcode.isEmpty) return;
+
     setState(() => _isLoading = true);
     try {
-      final result = await BarcodeScanner.scan();
-      if (result.rawContent.isNotEmpty) {
-        final response = await http.get(Uri.parse(
-            'https://world.openfoodfacts.org/api/v0/product/${result.rawContent}.json'));
-        if (response.statusCode == 200) {
-          final productData = json.decode(response.body);
-          if (productData['product'] != null) {
-            final product = productData['product'];
+      final product = await _foodService.fetchProductByBarcode(barcode);
 
-            // Save to Firestore
-            await _firestoreService.addScan(product);
+      if (product != null) {
+        // Save to Firestore
+        await _firestoreService.addScan(product);
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => ProductDetailsScreen(product: product)),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Product not found')),
-            );
-          }
-        } else {
-          throw Exception('Failed to load product details');
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailsScreen(product: product),
+          ),
+        );
+      } else {
+        // Product not found → show OCR fallback
+        _showOcrFallbackSheet();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -92,10 +91,156 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _showOcrFallbackSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(28),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.search_off,
+                size: 40,
+                color: Color(0xFFFF9500),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Product Not Found',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This product isn\'t in our database.\nPhotograph the ingredient label instead!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Camera option
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await _captureAndAnalyze(useCamera: true);
+                },
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Take Photo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF34C759),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Gallery option
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await _captureAndAnalyze(useCamera: false);
+                },
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Choose from Gallery'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF007AFF),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  side: const BorderSide(color: Color(0xFF007AFF)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Dismiss
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[500], fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _captureAndAnalyze({required bool useCamera}) async {
+    setState(() => _isLoading = true);
+    try {
+      final String? text = useCamera
+          ? await _ocrService.captureAndExtractText()
+          : await _ocrService.pickAndExtractText();
+
+      if (text != null && text.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => IngredientAnalysisScreen(
+              ingredientsText: text,
+              productName: 'Scanned Label',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Could not extract text from image. Try again with a clearer photo.'),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('OCR Error: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7), // iOS Grouped Background
+      backgroundColor: const Color(0xFFF2F2F7),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -111,7 +256,7 @@ class _HomePageState extends State<HomePage> {
                 style: GoogleFonts.inter(
                   color: Colors.black,
                   fontWeight: FontWeight.w700,
-                  fontSize: 28, // Large Title size
+                  fontSize: 28,
                 ),
               ),
               centerTitle: false,
@@ -125,7 +270,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          SliverLoginHeader(), // Just a placeholder for clean code structure if needed, but proceeding inline
+          SliverLoginHeader(),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -136,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE3E3E8), // iOS Search Bar Grey
+                      color: const Color(0xFFE3E3E8),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: TextField(
@@ -173,7 +318,9 @@ class _HomePageState extends State<HomePage> {
                         gradient: LinearGradient(
                           colors: [
                             Theme.of(context).primaryColor,
-                            Theme.of(context).primaryColor.withOpacity(0.8),
+                            Theme.of(context)
+                                .primaryColor
+                                .withValues(alpha: 0.8),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -181,8 +328,9 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.3),
+                            color: Theme.of(context)
+                                .primaryColor
+                                .withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -194,7 +342,7 @@ class _HomePageState extends State<HomePage> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(Icons.qr_code_scanner,
@@ -219,6 +367,68 @@ class _HomePageState extends State<HomePage> {
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // OCR Direct Scan Button
+                  GestureDetector(
+                    onTap: () => _captureAndAnalyze(useCamera: true),
+                    child: Container(
+                      height: 64,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                const Color(0xFF007AFF).withValues(alpha: 0.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.document_scanner,
+                                color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Scan Label with Camera',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Use OCR to read ingredient labels',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -326,7 +536,7 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           border: const Border(
               top: BorderSide(color: Color(0xFFE5E5EA), width: 0.5)),
         ),
@@ -354,7 +564,7 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const TipsScreen()));
+                          builder: (context) => const ProfileScreen()));
                 }
               },
               items: const [
@@ -363,7 +573,7 @@ class _HomePageState extends State<HomePage> {
                 BottomNavigationBarItem(
                     icon: Icon(Icons.history), label: 'History'),
                 BottomNavigationBarItem(
-                    icon: Icon(Icons.lightbulb), label: 'Tips'),
+                    icon: Icon(Icons.person), label: 'Profile'),
               ],
             ),
           ),

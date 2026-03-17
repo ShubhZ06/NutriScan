@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/about_us_screen.dart';
 import 'screens/tutorial_screen.dart';
 import 'screens/home_page.dart';
 import 'screens/scan_history_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
   runApp(const MyApp());
 }
@@ -31,7 +34,7 @@ class MyApp extends StatelessWidget {
           seedColor: const Color(0xFF34C759),
           secondary: const Color(0xFF34C759),
           surface: Colors.white,
-          background: const Color(0xFFF2F2F7),
+          surfaceContainerHighest: const Color(0xFFF2F2F7),
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
@@ -83,6 +86,7 @@ class MyApp extends StatelessWidget {
         '/tutorial': (context) => const TutorialScreen(),
         '/home': (context) => const HomePage(),
         '/scan_history': (context) => const ScanHistoryScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
     );
   }

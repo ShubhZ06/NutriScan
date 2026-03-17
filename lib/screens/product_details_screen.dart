@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'ingredient_analysis_screen.dart';
 
 class ProductDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -32,7 +33,7 @@ class ProductDetailsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -87,6 +88,63 @@ class ProductDetailsScreen extends StatelessWidget {
                 style: const TextStyle(fontSize: 16, height: 1.5),
               ),
             ),
+
+            // ✨ Simplify Ingredients Button
+            if (product['ingredients_text'] != null &&
+                (product['ingredients_text'] as String).isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                width: double.infinity,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => IngredientAnalysisScreen(
+                          ingredientsText: product['ingredients_text'],
+                          productName:
+                              product['product_name'] ?? 'Unknown Product',
+                          imageUrl: product['image_url'],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                        SizedBox(width: 10),
+                        Text(
+                          'Simplify Ingredients',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Nutritional Information - Inset Grouped Style
             _buildSection(
