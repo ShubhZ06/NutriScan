@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/about_us_screen.dart';
 import 'screens/tutorial_screen.dart';
 import 'screens/home_page.dart';
@@ -10,6 +10,16 @@ import 'screens/scan_history_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/auth_service.dart';
+
+class AppRoutes {
+  static const String authGate = '/auth-gate';
+  static const String tutorial = '/tutorial';
+  static const String login = '/login';
+  static const String about = '/about';
+  static const String home = '/home';
+  static const String scanHistory = '/scan_history';
+  static const String profile = '/profile';
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,21 +89,57 @@ class MyApp extends StatelessWidget {
           margin: EdgeInsets.zero,
         ),
       ),
-      home: const AuthWrapper(),
+      home: const AppLaunchScreen(),
       routes: {
-        '/login': (context) => const LoginScreen(),
-        '/about': (context) => const AboutUsScreen(),
-        '/tutorial': (context) => const TutorialScreen(),
-        '/home': (context) => const HomePage(),
-        '/scan_history': (context) => const ScanHistoryScreen(),
-        '/profile': (context) => const ProfileScreen(),
+        AppRoutes.authGate: (context) => const AuthWrapper(),
+        AppRoutes.login: (context) => const LoginScreen(),
+        AppRoutes.about: (context) => const AboutUsScreen(),
+        AppRoutes.tutorial: (context) => const TutorialScreen(),
+        AppRoutes.home: (context) => const HomePage(),
+        AppRoutes.scanHistory: (context) => const ScanHistoryScreen(),
+        AppRoutes.profile: (context) => const ProfileScreen(),
       },
     );
   }
 }
 
+class AppLaunchScreen extends StatefulWidget {
+  const AppLaunchScreen({super.key});
+
+  @override
+  State<AppLaunchScreen> createState() => _AppLaunchScreenState();
+}
+
+class _AppLaunchScreenState extends State<AppLaunchScreen> {
+  static const String _tutorialDoneKey = 'tutorial_completed_v1';
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasCompletedTutorial = prefs.getBool(_tutorialDoneKey) ?? false;
+
+    // Keep splash visible briefly for a polished startup experience.
+    await Future.delayed(const Duration(milliseconds: 1400));
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(
+      hasCompletedTutorial ? AppRoutes.authGate : AppRoutes.tutorial,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const SplashScreen();
+  }
+}
+
 class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({Key? key}) : super(key: key);
+  const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +159,7 @@ class AuthWrapper extends StatelessWidget {
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -143,13 +189,7 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
-    _controller.forward();
-
-    Timer(const Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AboutUsScreen()),
-      );
-    });
+    _controller.repeat(reverse: true);
   }
 
   @override
@@ -182,6 +222,15 @@ class _SplashScreenState extends State<SplashScreen>
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.green[900],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Scan smarter. Eat better.',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Colors.green[800],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

@@ -9,6 +9,9 @@ class ProductDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ingredientsText = (product['ingredients_text'] ?? '').toString();
+    final ingredientItems = _parseIngredients(ingredientsText);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7), // iOS Grouped Background
       appBar: AppBar(
@@ -83,15 +86,14 @@ class ProductDetailsScreen extends StatelessWidget {
             _buildSection(
               title: 'Ingredients',
               icon: Icons.restaurant_menu,
-              content: Text(
-                product['ingredients_text'] ?? 'No ingredients info available',
-                style: const TextStyle(fontSize: 16, height: 1.5),
+              content: _buildStructuredIngredients(
+                rawText: ingredientsText,
+                ingredients: ingredientItems,
               ),
             ),
 
             // ✨ Simplify Ingredients Button
-            if (product['ingredients_text'] != null &&
-                (product['ingredients_text'] as String).isNotEmpty)
+            if (ingredientsText.isNotEmpty)
               Container(
                 margin: const EdgeInsets.only(bottom: 20),
                 width: double.infinity,
@@ -101,7 +103,7 @@ class ProductDetailsScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => IngredientAnalysisScreen(
-                          ingredientsText: product['ingredients_text'],
+                          ingredientsText: ingredientsText,
                           productName:
                               product['product_name'] ?? 'Unknown Product',
                           imageUrl: product['image_url'],
@@ -152,17 +154,14 @@ class ProductDetailsScreen extends StatelessWidget {
               icon: Icons.bar_chart,
               content: Column(
                 children: [
-                  _buildNutritionRow('Energy',
-                      '${product['nutriments']?['energy'] ?? '-'} kcal'),
+                  _buildNutritionRow('Energy', _formatEnergyValue()),
+                  const Divider(height: 20),
+                  _buildNutritionRow('Fat', _formatGramValue('fat')),
                   const Divider(height: 20),
                   _buildNutritionRow(
-                      'Fat', '${product['nutriments']?['fat'] ?? '-'} g'),
+                      'Carbs', _formatGramValue('carbohydrates')),
                   const Divider(height: 20),
-                  _buildNutritionRow('Carbs',
-                      '${product['nutriments']?['carbohydrates'] ?? '-'} g'),
-                  const Divider(height: 20),
-                  _buildNutritionRow('Proteins',
-                      '${product['nutriments']?['proteins'] ?? '-'} g'),
+                  _buildNutritionRow('Proteins', _formatGramValue('proteins')),
                 ],
               ),
             ),
@@ -264,5 +263,178 @@ class ProductDetailsScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildStructuredIngredients({
+    required String rawText,
+    required List<String> ingredients,
+  }) {
+    if (rawText.trim().isEmpty) {
+      return const Text(
+        'No ingredients info available',
+        style: TextStyle(fontSize: 15, color: Colors.black54),
+      );
+    }
+
+    final additives = _extractInsCodes(rawText);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _infoChip('${ingredients.length} ingredients'),
+            if (additives.isNotEmpty)
+              _infoChip('${additives.length} INS additives'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...ingredients.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 5),
+                  child: Icon(Icons.circle, size: 8, color: Color(0xFF007AFF)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: const TextStyle(fontSize: 15, height: 1.35),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (additives.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'Detected INS additives',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: additives.map((code) => _infoChip(code)).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _infoChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF5FF),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFF005EC2),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  List<String> _parseIngredients(String text) {
+    if (text.trim().isEmpty) return const [];
+
+    final normalized =
+        text.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ');
+    final List<String> result = [];
+    final StringBuffer current = StringBuffer();
+    int depth = 0;
+
+    for (int i = 0; i < normalized.length; i++) {
+      final char = normalized[i];
+
+      if (char == '(' || char == '[' || char == '{') {
+        depth++;
+      } else if (char == ')' || char == ']' || char == '}') {
+        depth = depth > 0 ? depth - 1 : 0;
+      }
+
+      if (char == ',' && depth == 0) {
+        final entry = current.toString().trim();
+        if (entry.isNotEmpty) result.add(_cleanIngredient(entry));
+        current.clear();
+      } else {
+        current.write(char);
+      }
+    }
+
+    final last = current.toString().trim();
+    if (last.isNotEmpty) result.add(_cleanIngredient(last));
+
+    return result;
+  }
+
+  String _cleanIngredient(String value) {
+    return value
+        .replaceAll(RegExp(r'^\*+'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  List<String> _extractInsCodes(String text) {
+    final matches = RegExp(r'INS\s*\d+[A-Z]?', caseSensitive: false)
+        .allMatches(text)
+        .map((m) => m.group(0)!.toUpperCase().replaceAll(RegExp(r'\s+'), ' '))
+        .toSet()
+        .toList();
+    matches.sort();
+    return matches;
+  }
+
+  dynamic _nutrimentValue(String key) {
+    final nutriments = product['nutriments'];
+    if (nutriments is! Map) return null;
+
+    return nutriments[key] ??
+        nutriments['${key}_100g'] ??
+        nutriments[key.replaceAll('-', '_')] ??
+        nutriments['${key.replaceAll('-', '_')}_100g'];
+  }
+
+  String _formatEnergyValue() {
+    final kcal = _asNum(_nutrimentValue('energy-kcal'));
+    final kj = _asNum(_nutrimentValue('energy-kj'));
+
+    if (kcal != null && kj != null) {
+      return '${_formatNum(kcal)} kcal (${_formatNum(kj)} kJ)';
+    }
+    if (kcal != null) return '${_formatNum(kcal)} kcal';
+    if (kj != null) return '${_formatNum(kj)} kJ';
+
+    final rawEnergy = _asNum(_nutrimentValue('energy'));
+    if (rawEnergy != null) return '${_formatNum(rawEnergy)} kJ';
+    return '-';
+  }
+
+  String _formatGramValue(String key) {
+    final value = _asNum(_nutrimentValue(key));
+    return value == null ? '-' : '${_formatNum(value)} g';
+  }
+
+  num? _asNum(dynamic value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
+  }
+
+  String _formatNum(num value) {
+    if (value % 1 == 0) return value.toInt().toString();
+    return value.toStringAsFixed(1);
   }
 }

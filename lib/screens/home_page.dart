@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'product_details_screen.dart';
-import 'scan_history_screen.dart';
-import 'profile_screen.dart';
 import 'scanner_screen.dart';
 import 'ingredient_analysis_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -556,15 +554,9 @@ class _HomePageState extends State<HomePage> {
               currentIndex: 0,
               onTap: (index) {
                 if (index == 1) {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ScanHistoryScreen()));
+                  Navigator.pushNamed(context, '/scan_history');
                 } else if (index == 2) {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ProfileScreen()));
+                  Navigator.pushNamed(context, '/profile');
                 }
               },
               items: const [
@@ -584,6 +576,8 @@ class _HomePageState extends State<HomePage> {
 }
 
 class SliverLoginHeader extends StatelessWidget {
+  const SliverLoginHeader({super.key});
+
   @override
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(child: Container());
