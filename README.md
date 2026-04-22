@@ -72,17 +72,17 @@ flowchart TD
 ```mermaid
 sequenceDiagram
       actor User
-      participant App as Flutter App
+   participant App as FlutterApp
       participant Scanner as MobileScanner
-      participant OFF as Open Food Facts API
+   participant OpenFoodFacts as OpenFoodFactsAPI
       participant Firestore as Cloud Firestore
       participant Gemini as Gemini API
 
       User->>App: Tap Scan Product
       App->>Scanner: Open scanner
       Scanner-->>App: Barcode value
-      App->>OFF: GET /api/v0/product/{barcode}.json
-      OFF-->>App: Product payload
+   App->>OpenFoodFacts: GET /api/v0/product/:barcode.json
+   OpenFoodFacts-->>App: Product payload
       App->>Firestore: addScan(normalized product)
       App-->>User: Show Product Details
       User->>App: Tap Simplify Ingredients
@@ -102,6 +102,66 @@ sequenceDiagram
    - search_history
 - In-memory only
    - Runtime UI state, current search results, temporary OCR text
+
+## Firestore Data Model
+
+```mermaid
+flowchart TD
+         A[(Cloud Firestore)] --> B[users\nCollection]
+         B --> C[{uid}\nUser Document]
+         C --> D[scan_history\nSubcollection]
+         D --> E[{scanId}\nScan Document]
+
+         E --> F[code: string|null]
+         E --> G[product_name: string|null]
+         E --> H[brands: string|null]
+         E --> I[image_url: string|null]
+         E --> J[ingredients_text: string|null]
+         E --> K[allergens: string|null]
+         E --> L[packaging: string|null]
+         E --> M[recommendations: string|null]
+         E --> N[nutriments: map]
+         E --> O[scan_timestamp: server timestamp]
+
+         N --> P[energy: number|string|bool|null]
+         N --> Q[fat: number|string|bool|null]
+         N --> R[carbohydrates: number|string|bool|null]
+         N --> S[proteins: number|string|bool|null]
+```
+
+Document path pattern:
+
+```text
+users/{uid}/scan_history/{scanId}
+```
+
+Example scan document schema:
+
+```json
+{
+   "code": "8901234567890",
+   "product_name": "Sample Protein Bar",
+   "brands": "NutriBrand",
+   "image_url": "https://images.openfoodfacts.org/.../front.jpg",
+   "ingredients_text": "Dates, whey protein, cocoa, emulsifier (INS 322)",
+   "allergens": "en:milk",
+   "packaging": "wrapper",
+   "recommendations": null,
+   "nutriments": {
+      "energy": 420,
+      "fat": 12.5,
+      "carbohydrates": 55,
+      "proteins": 18
+   },
+   "scan_timestamp": "<Firestore Timestamp>"
+}
+```
+
+Notes:
+
+- The app writes scan_timestamp using FieldValue.serverTimestamp().
+- Nutriments values are normalized to Firestore-safe primitives.
+- The app currently persists scan history in Firestore; profile data remains in SharedPreferences.
 
 ## Key App Modules
 
