@@ -107,26 +107,26 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-         A[(Cloud Firestore)] --> B[users\nCollection]
-         B --> C[{uid}\nUser Document]
-         C --> D[scan_history\nSubcollection]
-         D --> E[{scanId}\nScan Document]
+         A[(Cloud Firestore)] --> B["users Collection"]
+         B --> C["{uid} User Document"]
+         C --> D["scan_history Subcollection"]
+         D --> E["{scanId} Scan Document"]
 
-         E --> F[code: string|null]
-         E --> G[product_name: string|null]
-         E --> H[brands: string|null]
-         E --> I[image_url: string|null]
-         E --> J[ingredients_text: string|null]
-         E --> K[allergens: string|null]
-         E --> L[packaging: string|null]
-         E --> M[recommendations: string|null]
-         E --> N[nutriments: map]
-         E --> O[scan_timestamp: server timestamp]
+         E --> F["code: string or null"]
+         E --> G["product_name: string or null"]
+         E --> H["brands: string or null"]
+         E --> I["image_url: string or null"]
+         E --> J["ingredients_text: string or null"]
+         E --> K["allergens: string or null"]
+         E --> L["packaging: string or null"]
+         E --> M["recommendations: string or null"]
+         E --> N["nutriments: map"]
+         E --> O["scan_timestamp: server timestamp"]
 
-         N --> P[energy: number|string|bool|null]
-         N --> Q[fat: number|string|bool|null]
-         N --> R[carbohydrates: number|string|bool|null]
-         N --> S[proteins: number|string|bool|null]
+         N --> P["energy: number/string/bool/null"]
+         N --> Q["fat: number/string/bool/null"]
+         N --> R["carbohydrates: number/string/bool/null"]
+         N --> S["proteins: number/string/bool/null"]
 ```
 
 Document path pattern:
