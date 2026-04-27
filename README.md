@@ -1,188 +1,59 @@
 # NutriScan
 
-NutriScan is a Flutter mobile app for food product scanning and ingredient safety analysis.
-It combines barcode lookup (Open Food Facts), OCR fallback (ML Kit), AI-based ingredient interpretation (Gemini), and user-level scan history (Firebase).
+NutriScan is a Flutter app for food product scanning and ingredient safety analysis.
 
-## Current Feature Set
+It combines:
+- Barcode lookup via Open Food Facts
+- OCR fallback via Google ML Kit
+- AI ingredient interpretation via Gemini
+- User authentication and scan history via Firebase
 
-- Email/password authentication with Firebase Auth
-- Onboarding gate with tutorial completion persisted in SharedPreferences
-- Barcode scanning flow with Mobile Scanner
-- Product fetch/search via Open Food Facts API
-- Product detail view with nutrition and ingredient breakdown
+## Open Contribution Status
+
+This repository is prepared for public contribution.
+
+What this means:
+- No production API keys are stored in this repo.
+- No private Firebase config is committed.
+- Contributors must use their own Firebase project and Gemini key.
+
+## Features
+
+- Firebase email/password authentication
+- Barcode scanning with Mobile Scanner
+- Product details from Open Food Facts
 - AI ingredient analysis with traffic-light verdict (green/yellow/red)
-- OCR fallback for label text extraction when barcode product is missing
-- Per-user scan history stored in Cloud Firestore
-- Profile form persisted locally in SharedPreferences
+- OCR fallback for labels when barcode data is missing
+- Per-user scan history in Cloud Firestore
+- Local onboarding and profile state in SharedPreferences
 
 ## Tech Stack
 
 - Flutter + Dart
 - Firebase Core, Auth, Firestore
-- Open Food Facts public API
-- Google Gemini API via google_generative_ai
-- Google ML Kit Text Recognition + image_picker (OCR flow)
-- SharedPreferences for local app state and profile data
-
-## Architecture Overview
-
-```mermaid
-flowchart LR
-      U[User] --> UI[Flutter UI Layer\nScreens + Widgets]
-
-      subgraph Client[Mobile App]
-         UI --> NAV[Navigation + Route Guards\nSplash -> Tutorial/Auth]
-         UI --> SVC[Service Layer]
-         SVC --> OFF[OpenFoodFactsService]
-         SVC --> GEM[GeminiService]
-         SVC --> OCR[OcrService]
-         SVC --> FS[FirestoreService]
-         SVC --> AUTH[AuthService]
-         UI --> LOCAL[SharedPreferences\nTutorial Flag + Profile + Search History]
-      end
-
-      OFF --> OFFAPI[(Open Food Facts API)]
-      GEM --> GEMAPI[(Gemini API)]
-      OCR --> MLKIT[(On-device ML Kit OCR)]
-      AUTH --> FBA[(Firebase Auth)]
-      FS --> FDB[(Cloud Firestore)]
-```
-
-## Runtime Flow (Scan + Analyze)
-
-```mermaid
-flowchart TD
-      A[Home Screen] --> B[Scan Barcode]
-      B --> C[ScannerScreen returns barcode]
-      C --> D[OpenFoodFactsService.fetchProductByBarcode]
-      D -->|Found| E[Persist normalized payload to Firestore]
-      E --> F[Open ProductDetailsScreen]
-      F --> G[User taps Simplify Ingredients]
-      G --> H[GeminiService.analyzeIngredients]
-      H --> I[IngredientAnalysisScreen\nTraffic-light results]
-
-      D -->|Not Found| J[Show OCR fallback sheet]
-      J --> K[Capture or pick image]
-      K --> L[OcrService.extractTextFromPath]
-      L --> M[Open IngredientAnalysisScreen\nwith OCR text]
-```
-
-## Sequence Diagram (Happy Path)
-
-```mermaid
-sequenceDiagram
-      actor User
-   participant App as FlutterApp
-      participant Scanner as MobileScanner
-   participant OpenFoodFacts as OpenFoodFactsAPI
-      participant Firestore as Cloud Firestore
-      participant Gemini as Gemini API
-
-      User->>App: Tap Scan Product
-      App->>Scanner: Open scanner
-      Scanner-->>App: Barcode value
-   App->>OpenFoodFacts: GET /api/v0/product/:barcode.json
-   OpenFoodFacts-->>App: Product payload
-      App->>Firestore: addScan(normalized product)
-      App-->>User: Show Product Details
-      User->>App: Tap Simplify Ingredients
-      App->>Gemini: Analyze ingredients prompt
-      Gemini-->>App: Structured JSON verdict
-      App-->>User: Show traffic-light analysis
-```
-
-## Data Ownership
-
-- Cloud Firestore
-   - Per-user scan history under users/{uid}/scan_history
-   - Only normalized, Firestore-safe primitive fields are saved
+- Open Food Facts API
+- Gemini API (`google_generative_ai`)
+- Google ML Kit Text Recognition
 - SharedPreferences
-   - tutorial_completed_v1
-   - user_profile_v1
-   - search_history
-- In-memory only
-   - Runtime UI state, current search results, temporary OCR text
 
-## Firestore Data Model
+## Project Structure
 
-```mermaid
-flowchart TD
-         A[(Cloud Firestore)] --> B["users Collection"]
-         B --> C["{uid} User Document"]
-         C --> D["scan_history Subcollection"]
-         D --> E["{scanId} Scan Document"]
+- `lib/main.dart` - app entry and routing
+- `lib/screens/` - UI screens
+- `lib/services/` - service layer (Auth, Firestore, Gemini, OCR, Open Food Facts)
+- `lib/models/` - domain models
+- `lib/widgets/` - reusable UI components
 
-         E --> F["code: string or null"]
-         E --> G["product_name: string or null"]
-         E --> H["brands: string or null"]
-         E --> I["image_url: string or null"]
-         E --> J["ingredients_text: string or null"]
-         E --> K["allergens: string or null"]
-         E --> L["packaging: string or null"]
-         E --> M["recommendations: string or null"]
-         E --> N["nutriments: map"]
-         E --> O["scan_timestamp: server timestamp"]
+## Local Setup
 
-         N --> P["energy: number/string/bool/null"]
-         N --> Q["fat: number/string/bool/null"]
-         N --> R["carbohydrates: number/string/bool/null"]
-         N --> S["proteins: number/string/bool/null"]
-```
+### 1. Prerequisites
 
-Document path pattern:
+- Flutter SDK installed
+- Android Studio or Xcode (for emulator/simulator)
+- A Firebase project you control
+- A Gemini API key you control
 
-```text
-users/{uid}/scan_history/{scanId}
-```
-
-Example scan document schema:
-
-```json
-{
-   "code": "8901234567890",
-   "product_name": "Sample Protein Bar",
-   "brands": "NutriBrand",
-   "image_url": "https://images.openfoodfacts.org/.../front.jpg",
-   "ingredients_text": "Dates, whey protein, cocoa, emulsifier (INS 322)",
-   "allergens": "en:milk",
-   "packaging": "wrapper",
-   "recommendations": null,
-   "nutriments": {
-      "energy": 420,
-      "fat": 12.5,
-      "carbohydrates": 55,
-      "proteins": 18
-   },
-   "scan_timestamp": "<Firestore Timestamp>"
-}
-```
-
-Notes:
-
-- The app writes scan_timestamp using FieldValue.serverTimestamp().
-- Nutriments values are normalized to Firestore-safe primitives.
-- The app currently persists scan history in Firestore; profile data remains in SharedPreferences.
-
-## Key App Modules
-
-- Entry and routing: lib/main.dart
-- Screens: lib/screens/
-- Services: lib/services/
-- Models: lib/models/
-- Reusable widgets: lib/widgets/
-
-## Environment Variables
-
-Create a .env file in project root:
-
-```env
-GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-```
-
-## Setup
-
-1. Clone and install dependencies
+### 2. Clone and install dependencies
 
 ```bash
 git clone https://github.com/ShubhZ06/NutriScan.git
@@ -190,26 +61,74 @@ cd NutriScan
 flutter pub get
 ```
 
-2. Configure Firebase
+### 3. Configure Firebase with your own project
 
-- Add Android firebase config file at android/app/google-services.json
-- Ensure Firebase project has Auth (email/password) and Firestore enabled
+1. Create your own Firebase project.
+2. Enable Authentication (Email/Password) and Firestore.
+3. Add an Android app in Firebase with your package name.
+4. Download `google-services.json` and place it at `android/app/google-services.json`.
+5. If you build iOS/macOS, also add an Apple app in Firebase and place `GoogleService-Info.plist` at `ios/Runner/GoogleService-Info.plist`.
 
-3. Configure environment file
+Notes:
+- `android/app/google-services.json` is intentionally ignored by git.
+- `ios/Runner/GoogleService-Info.plist` is intentionally ignored by git.
+- Do not commit your Firebase config files.
+- You can use `android/app/google-services.example.json` as a placeholder reference for file structure.
 
-- Add .env in root with Gemini credentials
+### 4. Configure Gemini key (safe local approach)
 
-4. Run app
+Create a local file like `.env.local` (this file is git-ignored). The easiest way is to copy `.env.example` and edit values:
 
 ```bash
-flutter run
+copy .env.example .env.local
 ```
 
-## Known Operational Notes
+Then set your key and model:
 
-- Gemini quota/rate-limit errors are handled and surfaced with actionable retry/billing guidance.
-- Firestore writes use normalized payloads to avoid invalid nested structures from raw Open Food Facts responses.
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Run the app:
+
+```bash
+flutter run --dart-define-from-file=.env.local
+```
+
+You can also pass defines directly:
+
+```bash
+flutter run --dart-define=GEMINI_API_KEY=your_gemini_api_key --dart-define=GEMINI_MODEL=gemini-2.5-flash
+```
+
+## Build
+
+Release APK example:
+
+```bash
+flutter build apk --release --dart-define-from-file=.env.local
+```
+
+## Secret and Resource Safety
+
+- Never commit real keys, tokens, service configs, or signing files.
+- Keep secrets only in local ignored files (`.env.local`, platform service config files).
+- Rotate any key immediately if it was ever committed.
+- Use separate dev/test Firebase projects for community work.
+
+See [SECURITY.md](SECURITY.md) for disclosure and handling policy.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Quick flow:
+1. Fork and create a feature branch.
+2. Implement changes with tests where possible.
+3. Ensure `flutter analyze` and tests pass.
+4. Open a PR with a clear summary.
 
 ## License
 
-This project is licensed under the LICENSE file in this repository.
+This project is licensed under the [LICENSE](LICENSE) file.

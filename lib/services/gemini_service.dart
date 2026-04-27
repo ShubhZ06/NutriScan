@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/ingredient_analysis.dart';
 
@@ -23,9 +22,20 @@ class GeminiConfigurationException implements Exception {
 class GeminiService {
   GenerativeModel? _model;
 
+  static const String _apiKeyFromDefine = String.fromEnvironment(
+    'GEMINI_API_KEY',
+  );
+  static const String _modelFromDefine = String.fromEnvironment(
+    'GEMINI_MODEL',
+  );
+
+  String get _resolvedApiKey {
+    return _apiKeyFromDefine.trim();
+  }
+
   String get _modelName {
-    final configured = dotenv.env['GEMINI_MODEL']?.trim();
-    if (configured != null && configured.isNotEmpty) {
+    final configured = _modelFromDefine.trim();
+    if (configured.isNotEmpty) {
       return configured;
     }
     return 'gemini-2.5-flash';
@@ -34,7 +44,7 @@ class GeminiService {
   GenerativeModel get model {
     _model ??= GenerativeModel(
       model: _modelName,
-      apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
+      apiKey: _resolvedApiKey,
     );
     return _model!;
   }
@@ -44,10 +54,10 @@ class GeminiService {
     String ingredientsText,
     String productName,
   ) async {
-    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    final apiKey = _resolvedApiKey;
     if (apiKey.trim().isEmpty) {
       throw const GeminiConfigurationException(
-        'Gemini API key is missing. Add GEMINI_API_KEY to your .env file.',
+        'Gemini API key is missing. Build the app with --dart-define=GEMINI_API_KEY=your_key.',
       );
     }
 
