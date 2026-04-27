@@ -1,59 +1,77 @@
-# NutriScan
+<div align="center">
 
-NutriScan is a Flutter app for food product scanning and ingredient safety analysis.
+<img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" />
+<img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" />
+<img src="https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" />
+<img src="https://img.shields.io/badge/Open_Food_Facts-40C100?style=for-the-badge&logo=openfoodfacts&logoColor=white" />
 
-It combines:
-- Barcode lookup via Open Food Facts
-- OCR fallback via Google ML Kit
-- AI ingredient interpretation via Gemini
-- User authentication and scan history via Firebase
+# 🥗 NutriScan
 
-## Open Contribution Status
+**Scan any food product. Know what's actually in it.**
 
-This repository is prepared for public contribution.
+NutriScan combines barcode scanning, OCR, and AI to give you an instant ingredient safety verdict — green, yellow, or red.
 
-What this means:
-- No production API keys are stored in this repo.
-- No private Firebase config is committed.
-- Contributors must use their own Firebase project and Gemini key.
+[Getting Started](#-local-setup) · [Contributing](#-contributing) · [Security](SECURITY.md) · [License](LICENSE)
 
-## Features
+</div>
 
-- Firebase email/password authentication
-- Barcode scanning with Mobile Scanner
-- Product details from Open Food Facts
-- AI ingredient analysis with traffic-light verdict (green/yellow/red)
-- OCR fallback for labels when barcode data is missing
-- Per-user scan history in Cloud Firestore
-- Local onboarding and profile state in SharedPreferences
+---
+
+## What It Does
+
+Point your camera at a barcode and NutriScan pulls the full product data from Open Food Facts, then runs the ingredient list through Gemini for an AI-powered safety verdict. No barcode? The OCR fallback reads the label directly. Every scan is saved to your personal history in Firestore.
+
+| Feature | Details |
+|---|---|
+| 🔐 Auth | Firebase email/password |
+| 📷 Scanning | Mobile Scanner (barcode) + ML Kit (OCR fallback) |
+| 🌐 Product Data | Open Food Facts API |
+| 🤖 AI Analysis | Gemini — traffic-light verdict (🟢 / 🟡 / 🔴) |
+| 🗂️ History | Per-user scan history in Cloud Firestore |
+| 💾 Local State | Onboarding + profile via SharedPreferences |
+
+---
 
 ## Tech Stack
 
-- Flutter + Dart
-- Firebase Core, Auth, Firestore
-- Open Food Facts API
-- Gemini API (`google_generative_ai`)
-- Google ML Kit Text Recognition
-- SharedPreferences
+```
+Flutter + Dart
+├── Firebase Core, Auth, Firestore
+├── Open Food Facts API
+├── Gemini API (google_generative_ai)
+├── Google ML Kit Text Recognition
+└── SharedPreferences
+```
+
+---
 
 ## Project Structure
 
-- `lib/main.dart` - app entry and routing
-- `lib/screens/` - UI screens
-- `lib/services/` - service layer (Auth, Firestore, Gemini, OCR, Open Food Facts)
-- `lib/models/` - domain models
-- `lib/widgets/` - reusable UI components
+```
+lib/
+├── main.dart              # App entry and routing
+├── screens/               # UI screens
+├── services/              # Auth, Firestore, Gemini, OCR, Open Food Facts
+├── models/                # Domain models
+└── widgets/               # Reusable UI components
+```
 
-## Local Setup
+---
 
-### 1. Prerequisites
+## 🚀 Local Setup
 
-- Flutter SDK installed
-- Android Studio or Xcode (for emulator/simulator)
+> **Before you start:** This repo ships with no API keys and no Firebase config. You bring your own.
+
+### Prerequisites
+
+- Flutter SDK
+- Android Studio or Xcode
 - A Firebase project you control
-- A Gemini API key you control
+- A Gemini API key
 
-### 2. Clone and install dependencies
+---
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/ShubhZ06/NutriScan.git
@@ -61,31 +79,30 @@ cd NutriScan
 flutter pub get
 ```
 
-### 3. Configure Firebase with your own project
+---
 
-1. Create your own Firebase project.
-2. Enable Authentication (Email/Password) and Firestore.
-3. Add an Android app in Firebase with your package name.
-4. Download `google-services.json` and place it at `android/app/google-services.json`.
-5. If you build iOS/macOS, also add an Apple app in Firebase and place `GoogleService-Info.plist` at `ios/Runner/GoogleService-Info.plist`.
+### 2. Configure Firebase
 
-Notes:
-- `android/app/google-services.json` is intentionally ignored by git.
-- `ios/Runner/GoogleService-Info.plist` is intentionally ignored by git.
-- Do not commit your Firebase config files.
-- You can use `android/app/google-services.example.json` as a placeholder reference for file structure.
+1. Create a Firebase project and enable **Authentication** (Email/Password) and **Firestore**.
+2. Add an Android app — use your package name.
+3. Download `google-services.json` → place it at `android/app/google-services.json`.
+4. For iOS/macOS, add an Apple app and place `GoogleService-Info.plist` at `ios/Runner/GoogleService-Info.plist`.
 
-### 4. Configure Gemini key (safe local approach)
+> Both config files are git-ignored. Never commit them.  
+> See `android/app/google-services.example.json` for the expected file structure.
 
-Create a local file like `.env.local` (this file is git-ignored). The easiest way is to copy `.env.example` and edit values:
+---
+
+### 3. Configure your Gemini key
+
+Copy the example env file and fill in your values:
 
 ```bash
-copy .env.example .env.local
+cp .env.example .env.local
 ```
 
-Then set your key and model:
-
 ```env
+# .env.local
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 ```
@@ -96,39 +113,48 @@ Run the app:
 flutter run --dart-define-from-file=.env.local
 ```
 
-You can also pass defines directly:
+Or pass defines inline:
 
 ```bash
-flutter run --dart-define=GEMINI_API_KEY=your_gemini_api_key --dart-define=GEMINI_MODEL=gemini-2.5-flash
+flutter run \
+  --dart-define=GEMINI_API_KEY=your_gemini_api_key \
+  --dart-define=GEMINI_MODEL=gemini-2.5-flash
 ```
 
-## Build
+---
 
-Release APK example:
+### 4. Build a release APK
 
 ```bash
 flutter build apk --release --dart-define-from-file=.env.local
 ```
 
-## Secret and Resource Safety
+---
 
-- Never commit real keys, tokens, service configs, or signing files.
-- Keep secrets only in local ignored files (`.env.local`, platform service config files).
-- Rotate any key immediately if it was ever committed.
-- Use separate dev/test Firebase projects for community work.
+## 🔒 Secret Safety
 
-See [SECURITY.md](SECURITY.md) for disclosure and handling policy.
+- **Never commit** API keys, Firebase config files, or signing keystores.
+- Keep all secrets in local, git-ignored files (`.env.local`, `google-services.json`, `GoogleService-Info.plist`).
+- If a key was ever committed — even briefly — rotate it immediately.
+- Use a separate Firebase project for dev/test work.
 
-## Contributing
+See [SECURITY.md](SECURITY.md) for the full disclosure and handling policy.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+---
 
-Quick flow:
-1. Fork and create a feature branch.
-2. Implement changes with tests where possible.
-3. Ensure `flutter analyze` and tests pass.
-4. Open a PR with a clear summary.
+## 🤝 Contributing
+
+Contributions are welcome. Quick flow:
+
+1. Fork the repo and create a feature branch.
+2. Implement your changes with tests where possible.
+3. Make sure `flutter analyze` passes and all tests are green.
+4. Open a PR with a clear summary of what changed and why.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
+
+---
 
 ## License
 
-This project is licensed under the [LICENSE](LICENSE) file.
+Licensed under the terms in [LICENSE](LICENSE).
